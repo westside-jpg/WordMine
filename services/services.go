@@ -4,15 +4,61 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"sort"
 	"strings"
+	"unicode"
+
+	"github.com/westside-jpg/WordMine/stopwords"
+	"github.com/westside-jpg/WordMine/types"
 )
 
-// TODO: Сделать детерменированным
-func GetTopCountByLength(name string, length int, offset int, caseSensetive bool) (map[string]int, error) {
+// GetTop читает текстовый файл по указанному пути и возвращает топ самых
+// часто встречающихся слов, отсортированных по убыванию частоты. При равной
+// частоте слова упорядочиваются по алфавиту, чтобы результат был одинаковым
+// при каждом вызове.
+//
+// Слова очищаются от знаков препинания по краям перед подсчётом (например,
+// "привет," и "привет" считаются одним словом), но внутренние символы,
+// такие как дефис в "кто-то", сохраняются.
+//
+// Параметры:
+//   - name: путь к текстовому файлу для анализа
+//   - options: настройки подсчёта, см. types.TopOptions
+//     Length: если 0, учитываются слова любой длины; иначе только слова
+//     ровно этой длины в рунах
+//     Limit: сколько слов вернуть в топе; если 0, используется значение
+//     по умолчанию 10
+//     CaseSensitive: если false, регистр букв игнорируется при подсчёте
+//     ExcludeStopWords: если true, из результата исключаются предлоги,
+//     союзы, частицы и местоимения. Список берётся из StopWords, если
+//     он задан, иначе используется встроенный stopwords.DefaultRussianStopWords.
+//     Проверка на стоп-слово регистронезависима всегда, вне зависимости
+//     от CaseSensitive
+//     StopWords: свой список стоп-слов, учитывается только если
+//     ExcludeStopWords равен true
+//
+// Возвращает ошибку, если файл не удалось открыть или прочитать.
+// Если найдено меньше слов, чем запрошено в Limit, возвращает столько,
+// сколько нашлось, без ошибки.
+func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
+	if options.Limit == 0 {
+		options.Limit = 10
+	}
+
+	stopWords := options.StopWords
+	if options.ExcludeStopWords && stopWords == nil {
+		stopWords = stopwords.DefaultRussianStopWords
+	}
+
+	stopWordsSet := make(map[string]struct{}, len(stopWords))
+	for _, sw := range stopWords {
+		stopWordsSet[strings.ToLower(sw)] = struct{}{}
+	}
+
 	file, err := os.Open(name)
 	if err != nil {
 		log.Printf("Ошибка открытия файла: %v", err)
-		return nil, err
+		return []types.WordCount{}, err
 	}
 	defer file.Close()
 
@@ -22,32 +68,50 @@ func GetTopCountByLength(name string, length int, offset int, caseSensetive bool
 	rawList := make(map[string]int)
 	for scanner.Scan() {
 		word := scanner.Text()
-		if !caseSensetive {
+
+		word = strings.TrimFunc(word, func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+		})
+
+		if word == "" {
+			continue
+		}
+
+		if !options.CaseSensitive {
 			word = strings.ToLower(word)
 		}
-		if len([]rune(word)) == length {
+
+		if options.ExcludeStopWords {
+			if _, isStopWord := stopWordsSet[strings.ToLower(word)]; isStopWord {
+				continue
+			}
+		}
+
+		if options.Length == 0 || len([]rune(word)) == options.Length {
 			rawList[word]++
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return []types.WordCount{}, err
 	}
 	
-	list := make(map[string]int)
-	for range offset {
-		var maxCount = 0
-		var maxCountWord string
-		for word, count := range rawList {
-			if count >= maxCount {
-				maxCount = count
-				maxCountWord = word
-			}
-		}
-		list[maxCountWord] = maxCount
-		delete(rawList, maxCountWord)
+	results := make([]types.WordCount, 0, len(rawList))
+	for word, count := range rawList {
+		results = append(results, types.WordCount{Word: word, Count: count})
 	}
 
-	return list, nil
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].Count != results[j].Count {
+			return results[i].Count > results[j].Count
+		}
+		return results[i].Word < results[j].Word
+	})
+
+	if options.Limit > len(results) {
+		options.Limit = len(results)
+	}
+
+	return results[:options.Limit], nil
 	
 }
