@@ -10,6 +10,8 @@ import (
 
 	"github.com/westside-jpg/WordMine/stopwords"
 	"github.com/westside-jpg/WordMine/types"
+
+	"github.com/kljensen/snowball"
 )
 
 // GetTop читает текстовый файл по указанному пути и возвращает топ самых
@@ -50,9 +52,15 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 		stopWords = stopwords.DefaultRussianStopWords
 	}
 
-	stopWordsSet := make(map[string]struct{}, len(stopWords))
+	stemmedStopWords := make(map[string]struct{}, len(stopWords))
 	for _, sw := range stopWords {
-		stopWordsSet[strings.ToLower(sw)] = struct{}{}
+		stemmed, err := snowball.Stem(strings.ToLower(sw), "russian", true)
+
+		if err != nil {
+			return []types.WordCount{}, err
+		}
+		
+		stemmedStopWords[stemmed] = struct{}{}
 	}
 
 	file, err := os.Open(name)
@@ -82,7 +90,11 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 		}
 
 		if options.ExcludeStopWords {
-			if _, isStopWord := stopWordsSet[strings.ToLower(word)]; isStopWord {
+			stemmedWord, err := snowball.Stem(word, "russian", true)
+			if err != nil {
+				return []types.WordCount{}, err
+			}
+			if _, isStopWord := stemmedStopWords[strings.ToLower(stemmedWord)]; isStopWord {
 				continue
 			}
 		}
