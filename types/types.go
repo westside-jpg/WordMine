@@ -18,8 +18,8 @@ type Stats struct {
 	TotalPunctuation int
 
 	// Буквы
-	TotalLetters              int
-	TotalLettersWithoutSpaces int
+	TotalSymbols              int
+	TotalSymbolsWithoutSpaces int
 	OnlyWordsLetters          int
 
 	// Цифры и числа

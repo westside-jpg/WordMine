@@ -21,4 +21,7 @@ func main() {
 
 	formatting.GetTopFormatting(list)
 
+	list2, err := services.GetStats("warandpeace.txt")
+	formatting.GetStatsFormatting(list2)
+
 }

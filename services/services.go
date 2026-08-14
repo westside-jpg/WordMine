@@ -165,38 +165,38 @@ func GetStats(name string) (types.Stats, error) {
 	var totalPunctuation int
 
 	// Буквы
-	var totalLetters int              // готово
-	var totalLettersWithoutSpaces int // готово
-	var onlyWordsLetters int          // готово
+	var totalSymbols int
+	var totalSymbolsWithoutSpaces int
+	var onlyWordsLetters int
 
-	var totalFigures int // готово
-	var totalNumbers int // готово
+	var totalFigures int
+	var totalNumbers int
 
 	// Слова
-	var totalWords int // готово
+	var totalWords int
 	var totalStopWords int
 	var stopWordsPercentage float64
-	var uniqueWords int                  // готово
-	var totalSyllables int               // готово
-	var avgWordLengthByLetters float64   // готово
-	var avgWordLengthBySyllables float64 // готово
-	var longestWord string               // готово
-	var shortestWord string              // готово
+	var uniqueWords int
+	var totalSyllables int
+	var avgWordLengthByLetters float64
+	var avgWordLengthBySyllables float64
+	var longestWord string
+	var shortestWord string
 
 	// Предложения
-	var totalSentences int        // готово
-	var avgSentenceLength float64 // готово
-	var longestSentence string    // готово
-	var shortestSentence string   // готово
+	var totalSentences int
+	var avgSentenceLength float64
+	var longestSentence string
+	var shortestSentence string
 
 	// Лингвистические характеристики
-	var typeTokenRatio float64   // готово
-	var readabilityScore float64 // готово
+	var typeTokenRatio float64
+	var readabilityScore float64
 
 	for _, r := range text {
-		totalLetters++
+		totalSymbols++
 		if !unicode.IsSpace(r) {
-			totalLettersWithoutSpaces++
+			totalSymbolsWithoutSpaces++
 		}
 
 		if unicode.IsNumber(r) {
@@ -207,7 +207,7 @@ func GetStats(name string) (types.Stats, error) {
 	sentences := utils.SplitIntoSentences(text)
 
 	if len(sentences) == 0 {
-		return types.Stats{}, fmt.Errorf("текст не содержит предложений для анализа")
+		return types.Stats{}, fmt.Errorf("Текст не содержит предложений для анализа")
 	}
 
 	sortedSentences := slices.Clone(sentences)
@@ -271,14 +271,14 @@ func GetStats(name string) (types.Stats, error) {
 	}
 
 	if totalWords == 0 {
-		return types.Stats{}, fmt.Errorf("текст не содержит слов для анализа")
+		return types.Stats{}, fmt.Errorf("Текст не содержит слов для анализа")
 	}
 
 	uniqueWords = len(seenWords)
 	avgSentenceLength = float64(totalWords) / float64(len(sentences))
 	avgWordLengthByLetters = float64(onlyWordsLetters) / float64(totalWords)
 	avgWordLengthBySyllables = float64(totalSyllables) / float64(totalWords)
-	totalPunctuation = totalLettersWithoutSpaces - onlyWordsLetters
+	totalPunctuation = totalSymbolsWithoutSpaces - onlyWordsLetters
 	stopWordsPercentage = (float64(totalStopWords) / float64(totalWords)) * 100
 
 	typeTokenRatio = (float64(uniqueWords) / float64(totalWords)) * 100
@@ -287,8 +287,8 @@ func GetStats(name string) (types.Stats, error) {
 	return types.Stats{
 		TotalPunctuation: totalPunctuation,
 
-		TotalLetters:              totalLetters,
-		TotalLettersWithoutSpaces: totalLettersWithoutSpaces,
+		TotalSymbols:              totalSymbols,
+		TotalSymbolsWithoutSpaces: totalSymbolsWithoutSpaces,
 		OnlyWordsLetters:          onlyWordsLetters,
 
 		TotalFigures: totalFigures,
