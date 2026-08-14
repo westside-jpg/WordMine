@@ -3,10 +3,9 @@ package main
 import (
 	"log"
 
+	"github.com/westside-jpg/WordMine/formatting"
 	"github.com/westside-jpg/WordMine/services"
-	"github.com/westside-jpg/WordMine/utils"
 	"github.com/westside-jpg/WordMine/types"
-
 )
 
 func main() {
@@ -20,5 +19,6 @@ func main() {
 		log.Fatalf("Ошибка анализа слов по длине: %v", err)
 	}
 
-	utils.GetTopFormatting(list)
+	formatting.GetTopFormatting(list)
+
 }

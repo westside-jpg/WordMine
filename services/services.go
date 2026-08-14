@@ -2,14 +2,18 @@ package services
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/westside-jpg/WordMine/stopwords"
 	"github.com/westside-jpg/WordMine/types"
+	"github.com/westside-jpg/WordMine/utils"
 
 	"github.com/kljensen/snowball"
 )
@@ -77,9 +81,7 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 	for scanner.Scan() {
 		word := scanner.Text()
 
-		word = strings.TrimFunc(word, func(r rune) bool {
-			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-		})
+		word = utils.CleanWord(word)
 
 		if word == "" {
 			continue
@@ -107,7 +109,7 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 	if err := scanner.Err(); err != nil {
 		return []types.WordCount{}, err
 	}
-	
+
 	results := make([]types.WordCount, 0, len(rawList))
 	for word, count := range rawList {
 		results = append(results, types.WordCount{Word: word, Count: count})
@@ -125,5 +127,189 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 	}
 
 	return results[:options.Limit], nil
-	
+
+}
+
+// GetStats читает текстовый файл целиком и возвращает набор статистических
+// и лингвистических характеристик текста: количество букв, слов,
+// предложений, знаков препинания, цифр и чисел, лексическое разнообразие,
+// долю стоп-слов и приблизительный индекс читаемости.
+//
+// Файл читается целиком в память через os.ReadFile,
+// а не потоково, поскольку разбиение на предложения требует видеть весь
+// текст сразу.
+//
+// Ряд метрик являются приближёнными, а не точными:
+//   - границы предложений определяются по знакам .!? и не распознают
+//     сокращения (например, "т.д.", "А.С. Пушкин") или десятичные дроби;
+//   - число слогов (AvgWordLengthBySyllables) считается как число гласных
+//     букв в слове, без учёта реальных фонетических правил;
+//   - ReadabilityScore — адаптация формулы Флеша для русского языка
+//     (коэффициенты Флеша-Оборневой), эвристическая оценка, а не точный
+//     лингвистический показатель.
+//
+// Параметры:
+//   - name: путь к текстовому файлу для анализа
+//
+// Возвращает ошибку, если файл не удалось открыть или прочитать, если
+// текст не содержит ни одного предложения, или если после очистки в
+// тексте не осталось ни одного слова.
+func GetStats(name string) (types.Stats, error) {
+	data, err := os.ReadFile(name)
+	if err != nil {
+		return types.Stats{}, err
+	}
+	text := string(data)
+
+	// Знаки пунктуации
+	var totalPunctuation int
+
+	// Буквы
+	var totalLetters int              // готово
+	var totalLettersWithoutSpaces int // готово
+	var onlyWordsLetters int          // готово
+
+	var totalFigures int // готово
+	var totalNumbers int // готово
+
+	// Слова
+	var totalWords int // готово
+	var totalStopWords int
+	var stopWordsPercentage float64
+	var uniqueWords int                  // готово
+	var totalSyllables int               // готово
+	var avgWordLengthByLetters float64   // готово
+	var avgWordLengthBySyllables float64 // готово
+	var longestWord string               // готово
+	var shortestWord string              // готово
+
+	// Предложения
+	var totalSentences int        // готово
+	var avgSentenceLength float64 // готово
+	var longestSentence string    // готово
+	var shortestSentence string   // готово
+
+	// Лингвистические характеристики
+	var typeTokenRatio float64   // готово
+	var readabilityScore float64 // готово
+
+	for _, r := range text {
+		totalLetters++
+		if !unicode.IsSpace(r) {
+			totalLettersWithoutSpaces++
+		}
+
+		if unicode.IsNumber(r) {
+			totalFigures++
+		}
+	}
+
+	sentences := utils.SplitIntoSentences(text)
+
+	if len(sentences) == 0 {
+		return types.Stats{}, fmt.Errorf("текст не содержит предложений для анализа")
+	}
+
+	sortedSentences := slices.Clone(sentences)
+	slices.SortFunc(sortedSentences, func(a, b string) int {
+		return len([]rune(a)) - len([]rune(b))
+	})
+
+	totalSentences = len(sentences)
+	shortestSentence = sortedSentences[0]
+	longestSentence = sortedSentences[len(sortedSentences)-1]
+
+	stemmedStopWords := make(map[string]struct{}, len(stopwords.DefaultRussianStopWords))
+	for _, sw := range stopwords.DefaultRussianStopWords {
+		stemmed, err := snowball.Stem(strings.ToLower(sw), "russian", true)
+		if err != nil {
+			return types.Stats{}, err
+		}
+		stemmedStopWords[stemmed] = struct{}{}
+	}
+
+	seenWords := make(map[string]struct{})
+	for _, sentence := range sentences {
+
+		words := strings.Fields(sentence)
+
+		for _, word := range words {
+
+			word = utils.CleanWord(word)
+
+			if word == "" {
+				continue
+			}
+
+			totalWords++
+			totalSyllables += utils.CountSyllables(word)
+			onlyWordsLetters += len([]rune(word))
+
+			seenWords[strings.ToLower(word)] = struct{}{}
+
+			if longestWord == "" || len([]rune(word)) > len([]rune(longestWord)) {
+				longestWord = word
+			}
+			if shortestWord == "" || len([]rune(word)) < len([]rune(shortestWord)) {
+				shortestWord = word
+			}
+
+			_, err := strconv.ParseFloat(word, 64)
+			if err == nil {
+				totalNumbers++
+			}
+
+			stemmedWord, err := snowball.Stem(strings.ToLower(word), "russian", true)
+			if err != nil {
+				return types.Stats{}, err
+			}
+			if _, isStopWord := stemmedStopWords[stemmedWord]; isStopWord {
+				totalStopWords++
+			}
+
+		}
+	}
+
+	if totalWords == 0 {
+		return types.Stats{}, fmt.Errorf("текст не содержит слов для анализа")
+	}
+
+	uniqueWords = len(seenWords)
+	avgSentenceLength = float64(totalWords) / float64(len(sentences))
+	avgWordLengthByLetters = float64(onlyWordsLetters) / float64(totalWords)
+	avgWordLengthBySyllables = float64(totalSyllables) / float64(totalWords)
+	totalPunctuation = totalLettersWithoutSpaces - onlyWordsLetters
+	stopWordsPercentage = (float64(totalStopWords) / float64(totalWords)) * 100
+
+	typeTokenRatio = (float64(uniqueWords) / float64(totalWords)) * 100
+	readabilityScore = 206.835 - 1.52*avgSentenceLength - 65.14*avgWordLengthBySyllables
+
+	return types.Stats{
+		TotalPunctuation: totalPunctuation,
+
+		TotalLetters:              totalLetters,
+		TotalLettersWithoutSpaces: totalLettersWithoutSpaces,
+		OnlyWordsLetters:          onlyWordsLetters,
+
+		TotalFigures: totalFigures,
+		TotalNumbers: totalNumbers,
+
+		TotalWords:               totalWords,
+		TotalSyllables:           totalSyllables,
+		TotalStopWords:           totalStopWords,
+		StopWordsPercentage:      stopWordsPercentage,
+		UniqueWords:              uniqueWords,
+		AvgWordLengthByLetters:   avgWordLengthByLetters,
+		AvgWordLengthBySyllables: avgWordLengthBySyllables,
+		LongestWord:              longestWord,
+		ShortestWord:             shortestWord,
+
+		TotalSentences:    totalSentences,
+		AvgSentenceLength: avgSentenceLength,
+		LongestSentence:   longestSentence,
+		ShortestSentence:  shortestSentence,
+
+		TypeTokenRatio:   typeTokenRatio,
+		ReadabilityScore: readabilityScore,
+	}, nil
 }
