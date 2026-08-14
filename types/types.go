@@ -47,3 +47,21 @@ type Stats struct {
 	TypeTokenRatio   float64 // Лексическое разнообразие
 	ReadabilityScore float64 // Индекс читаемости Флеша
 }
+
+type FindInTextOptions struct {
+	Words         []string
+	CaseSensitive bool
+	WholeWordOnly bool
+}
+
+type FindInTextResults struct {
+	Word      string
+	LineIndex int
+	CharIndex int
+	Context   string
+}
+
+type WordWithPosition struct {
+	Word      string
+	CharIndex int
+}

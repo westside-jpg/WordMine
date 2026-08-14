@@ -313,3 +313,93 @@ func GetStats(name string) (types.Stats, error) {
 		ReadabilityScore: readabilityScore,
 	}, nil
 }
+
+func FindInText (name string, options types.FindInTextOptions) ([]types.FindInTextResults, error) {
+	file, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+
+	var results []types.FindInTextResults
+	lineNumber := 0
+
+	searchWords := make([]string, 0, len(options.Words))
+	for _, w := range options.Words {
+		cleaned := utils.CleanWord(w)
+		if !options.CaseSensitive {
+			cleaned = strings.ToLower(cleaned)
+		}
+		if cleaned != "" {
+			searchWords = append(searchWords, cleaned)
+		}
+	}
+
+	// Дедупликация повторений
+	slices.Sort(searchWords)
+	searchWords = slices.Compact(searchWords)
+
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	for scanner.Scan() {
+		lineNumber++
+		line := scanner.Text()
+
+		tokens := utils.SplitLineWithPositions(line)
+
+		for n, token := range tokens {
+			word := utils.CleanWord(token.Word)
+			if word == "" {
+				continue
+			}
+
+			sameWord := word
+
+			if !options.CaseSensitive {
+				sameWord = strings.ToLower(word)
+			}
+
+			for _, sw := range searchWords {
+
+				if (sameWord == sw && options.WholeWordOnly) || (strings.Contains(sameWord, sw) && !options.WholeWordOnly) {
+					var context string
+
+					switch {
+					case n > 0 && n < len(tokens)-1:
+						context = tokens[n-1].Word + " " + token.Word + " " + tokens[n+1].Word
+					case n > 0:
+						context = tokens[n-1].Word + " " + token.Word
+					case n < len(tokens)-1:
+						context = token.Word + " " + tokens[n+1].Word
+					default:
+						context = token.Word
+					}
+
+					results = append(results, types.FindInTextResults{
+						Word:      word,
+						LineIndex: lineNumber,
+						CharIndex: token.CharIndex,
+						Context:   context,
+					})
+				}
+
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].LineIndex != results[j].LineIndex {
+			return results[i].LineIndex < results[j].LineIndex
+		}
+		return results[i].CharIndex < results[j].CharIndex
+	})
+
+	return results, nil
+}

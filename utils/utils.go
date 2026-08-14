@@ -4,6 +4,7 @@ import (
     "regexp"
     "strings"
     "unicode"
+	"github.com/westside-jpg/WordMine/types"
 )
 // DeclinationWord возвращает грамматически правильную форму слова
 // в зависимости от числительного n, по правилам русского склонения.
@@ -116,4 +117,33 @@ func CleanWord(word string) string {
 	})
 
     return word
+}
+
+// SplitLineWithPositions разбивает строку на слова, попутно
+// запоминая, на какой позиции начинается каждое слово.
+func SplitLineWithPositions(line string) []types.WordWithPosition {
+	var result []types.WordWithPosition
+
+	runes := []rune(line)
+	i := 0
+	for i < len(runes) {
+		for i < len(runes) && unicode.IsSpace(runes[i]) {
+			i++
+		}
+		if i >= len(runes) {
+			break
+		}
+
+		start := i
+		for i < len(runes) && !unicode.IsSpace(runes[i]) {
+			i++
+		}
+
+		result = append(result, types.WordWithPosition{
+			Word:      string(runes[start:i]),
+			CharIndex: start,
+		})
+	}
+
+	return result
 }
