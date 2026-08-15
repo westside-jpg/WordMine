@@ -1,15 +1,16 @@
 package formatting
 
 import (
-    "os"
-	"unicode/utf8"
+	"bytes"
 	"fmt"
+	"os"
 	"strings"
-    "text/tabwriter"
+	"text/tabwriter"
+	"unicode/utf8"
 
-	"github.com/westside-jpg/WordMine/utils"
+	"github.com/fatih/color"
 	"github.com/westside-jpg/WordMine/types"
-    "github.com/fatih/color"
+	"github.com/westside-jpg/WordMine/utils"
 )
 
 // printError печатает сообщение об ошибке в стандартный вывод, выделенное
@@ -136,10 +137,10 @@ func ttrLevel(ttr float64) string {
 // Цвет автоматически отключается библиотекой fatih/color, если вывод
 // перенаправлен не в интерактивный терминал (например, в файл).
 func GetTopFormatting(results []types.WordCount) {
-    if len(results) == 0 {
+	if len(results) == 0 {
 		printError("Нет данных для отображения")
-        return
-    }
+		return
+	}
 
 	header := color.New(color.FgHiWhite, color.Bold, color.BgBlue)
 
@@ -172,7 +173,7 @@ func GetTopFormatting(results []types.WordCount) {
 			}
 		}
 
-        var barColor *color.Color
+		var barColor *color.Color
 		switch {
 		case percent > 80:
 			barColor = color.New(color.FgGreen)
@@ -279,4 +280,61 @@ func GetStatsFormatting(results types.Stats) {
 	fmt.Println()
 	warning.Println("TTR — доля уникальных слов от общего числа слов, чем выше, тем меньше повторов")
 	warning.Println("Индекс читаемости — чем выше значение, тем проще воспринимается текст")
+}
+
+// FindInTextFormatting печатает в стандартный вывод отформатированный
+// список результатов поиска слова или слов в тексте: номер строки,
+// позицию символа в строке, найденное слово и контекст вокруг него.
+//
+// Параметры:
+//   - results: список найденных вхождений, ожидается результат
+//     services.FindInText, отсортированный по LineIndex и CharIndex.
+//
+// Если results пуст, выводит сообщение об отсутствии совпадений и
+// завершает работу без ошибки.
+func FindInTextFormatting(results []types.FindInTextResults) {
+	if len(results) == 0 {
+		printError("Совпадений не найдено")
+		return
+	}
+
+	header := color.New(color.FgHiWhite, color.Bold, color.BgBlue)
+	warning := color.New(color.FgHiBlack, color.Italic)
+	labelColor := color.New(color.FgWhite, color.Bold)
+	matchColor := color.New(color.FgHiGreen, color.Bold)
+
+	fmt.Println()
+	header.Printf(" Найдено %d %s ",
+		len(results),
+		utils.DeclinationWord(len(results), "совпадение", "совпадения", "совпадений"),
+	)
+	fmt.Println()
+	fmt.Println()
+	warning.Println("Данные приблизительны,\nвозможны незначительные\nпогрешности")
+	fmt.Println()
+
+	var buf bytes.Buffer
+	w := tabwriter.NewWriter(&buf, 0, 0, 8, ' ', 0)
+
+	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", "Строка", "Позиция", "Слово", "Контекст")
+
+	for _, res := range results {
+		fmt.Fprintf(w, "%d\t%d\t%s\t%s\n",
+			res.LineIndex,
+			res.CharIndex,
+			res.Word,
+			res.Context,
+		)
+	}
+
+	w.Flush()
+
+	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+
+	fmt.Println(labelColor.Sprint(lines[0]))
+
+	for i, res := range results {
+		line := strings.ReplaceAll(lines[i+1], res.Word, matchColor.Sprint(res.Word))
+		fmt.Println(line)
+	}
 }
