@@ -55,10 +55,17 @@ type FindInTextOptions struct {
 }
 
 type FindInTextResults struct {
-	Word      string
-	LineIndex int
-	CharIndex int
-	Context   string
+	Word        string
+	MatchedWord string
+	LineIndex   int
+	CharIndex   int
+	Context     string
+}
+
+type FindInTextResponse struct {
+	Results       []FindInTextResults
+	CaseSensitive bool
+	WholeWordOnly bool
 }
 
 type WordWithPosition struct {

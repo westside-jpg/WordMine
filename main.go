@@ -25,9 +25,9 @@ func main() {
 	formatting.GetStatsFormatting(list2)
 
 	list3, err := services.FindInText("warandpeace.txt", types.FindInTextOptions{
-		Words: []string{"евро"},
+		Words: []string{"король", "князь"},
 		WholeWordOnly: false,
-		CaseSensitive: false,
+		CaseSensitive: true,
 	})
 	formatting.FindInTextFormatting(list3)
 

@@ -63,7 +63,7 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 		if err != nil {
 			return []types.WordCount{}, err
 		}
-		
+
 		stemmedStopWords[stemmed] = struct{}{}
 	}
 
@@ -314,10 +314,50 @@ func GetStats(name string) (types.Stats, error) {
 	}, nil
 }
 
-func FindInText (name string, options types.FindInTextOptions) ([]types.FindInTextResults, error) {
+// FindInText читает текстовый файл по указанному пути построчно и ищет
+// вхождения одного или нескольких слов из options.Words, возвращая для
+// каждого найденного вхождения номер строки, позицию символа в строке,
+// найденное слово, контекст вокруг него и то поисковое слово, которое
+// вызвало совпадение.
+//
+// Поисковые слова из options.Words перед сравнением очищаются от
+// пунктуации по краям (см. utils.CleanWord), приводятся к нижнему
+// регистру при options.CaseSensitive равном false и дедуплицируются.
+// Исходный слайс options.Words при этом не изменяется, вся подготовка
+// идёт в локальную копию.
+//
+// Слово из текста считается совпавшим одним из двух способов, в
+// зависимости от options.WholeWordOnly:
+//   - true: очищенное слово из текста должно точно совпадать с поисковым
+//     словом (WholeWordOnly).
+//   - false: очищенное слово из текста должно содержать поисковое слово
+//     как подстроку (strings.Contains).
+//
+// Если одно слово из текста совпадает сразу с несколькими поисковыми
+// словами (например, при options.WholeWordOnly равном false, слово
+// "европейского" совпадает и с "евро", и с "европ"), для него создаётся
+// отдельная запись результата на каждое совпавшее поисковое слово,
+// поле MatchedWord в каждой из них указывает, какое именно.
+//
+// Context строится из трёх соседних токенов строки (предыдущий, само
+// слово, следующий) в их исходном виде, с сохранением пунктуации, а не
+// из очищенных слов, чтобы контекст выглядел ближе к оригинальному
+// тексту. На границах строки (первый или последний токен) отсутствующий
+// сосед просто опускается.
+//
+// Результаты сортируются по возрастанию LineIndex, а внутри одной строки
+// по возрастанию CharIndex, то есть в порядке появления в тексте.
+//
+// Параметры:
+//   - name: путь к текстовому файлу для анализа.
+//   - options: настройки поиска, см. types.FindInTextOptions.
+//
+// Возвращает ошибку, если файл не удалось открыть или прочитать. Если
+// совпадений не найдено, возвращает пустой Results без ошибки.
+func FindInText(name string, options types.FindInTextOptions) (types.FindInTextResponse, error) {
 	file, err := os.Open(name)
 	if err != nil {
-		return nil, err
+		return types.FindInTextResponse{}, err
 	}
 	defer file.Close()
 
@@ -379,10 +419,11 @@ func FindInText (name string, options types.FindInTextOptions) ([]types.FindInTe
 					}
 
 					results = append(results, types.FindInTextResults{
-						Word:      word,
-						LineIndex: lineNumber,
-						CharIndex: token.CharIndex,
-						Context:   context,
+						Word:        word,
+						MatchedWord: sw,
+						LineIndex:   lineNumber,
+						CharIndex:   token.CharIndex,
+						Context:     context,
 					})
 				}
 
@@ -391,7 +432,7 @@ func FindInText (name string, options types.FindInTextOptions) ([]types.FindInTe
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return types.FindInTextResponse{}, err
 	}
 
 	sort.Slice(results, func(i, j int) bool {
@@ -401,5 +442,11 @@ func FindInText (name string, options types.FindInTextOptions) ([]types.FindInTe
 		return results[i].CharIndex < results[j].CharIndex
 	})
 
-	return results, nil
+	response := types.FindInTextResponse{
+		Results:       results,
+		CaseSensitive: options.CaseSensitive,
+		WholeWordOnly: options.WholeWordOnly,
+	}
+
+	return response, nil
 }

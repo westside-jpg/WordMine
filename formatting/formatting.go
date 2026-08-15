@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"slices"
 	"text/tabwriter"
 	"unicode/utf8"
 
@@ -282,18 +283,38 @@ func GetStatsFormatting(results types.Stats) {
 	warning.Println("Индекс читаемости — чем выше значение, тем проще воспринимается текст")
 }
 
-// FindInTextFormatting печатает в стандартный вывод отформатированный
-// список результатов поиска слова или слов в тексте: номер строки,
-// позицию символа в строке, найденное слово и контекст вокруг него.
+// FindInTextFormatting печатает в стандартный вывод отформатированную
+// сводку результатов поиска слова или слов в тексте: агрегированные
+// счётчики вхождений и построчную таблицу с номером строки, позицией
+// символа, найденным словом и контекстом вокруг него.
+//
+// Счётчики выводятся в двух слайсах. "По словоформам" — количество
+// вхождений каждой реально найденной в тексте формы слова (например,
+// "европа" и "европы" считаются раздельно). "По запросам" — количество
+// вхождений на каждое исходное поисковое слово из options.Words,
+// показывается только если results.WholeWordOnly равен false, поскольку
+// при точном совпадении слова оба слайса всегда идентичны и вторая
+// секция была бы чистым дублированием первой.
+//
+// Само найденное слово подсвечивается цветом и в колонке "Слово", и
+// внутри колонки "Контекст". Ширина колонок таблицы вычисляется вручную
+// по видимой длине текста, а не через text/tabwriter, поскольку tabwriter
+// считает ширину ячейки по количеству рун и не отличает видимые символы
+// от ANSI escape-последовательностей цвета, из-за чего раскраска ячеек
+// до выравнивания ломает расчёт ширины соседних колонок.
 //
 // Параметры:
-//   - results: список найденных вхождений, ожидается результат
-//     services.FindInText, отсортированный по LineIndex и CharIndex.
+//   - results: ответ поиска, ожидается результат services.FindInText.
+//     results.Results должен быть отсортирован по LineIndex и CharIndex,
+//     а results.CaseSensitive и results.WholeWordOnly должны отражать
+//     реальные настройки, с которыми выполнялся поиск, поскольку от них
+//     напрямую зависит, как группируются счётчики и какие секции
+//     показываются.
 //
-// Если results пуст, выводит сообщение об отсутствии совпадений и
-// завершает работу без ошибки.
-func FindInTextFormatting(results []types.FindInTextResults) {
-	if len(results) == 0 {
+// Если results.Results пуст, выводит сообщение об отсутствии совпадений
+// и завершает работу без ошибки.
+func FindInTextFormatting(results types.FindInTextResponse) {
+	if len(results.Results) == 0 {
 		printError("Совпадений не найдено")
 		return
 	}
@@ -305,12 +326,64 @@ func FindInTextFormatting(results []types.FindInTextResults) {
 
 	fmt.Println()
 	header.Printf(" Найдено %d %s ",
-		len(results),
-		utils.DeclinationWord(len(results), "совпадение", "совпадения", "совпадений"),
+		len(results.Results),
+		utils.DeclinationWord(len(results.Results), "совпадение", "совпадения", "совпадений"),
 	)
 	fmt.Println()
 	fmt.Println()
 	warning.Println("Данные приблизительны,\nвозможны незначительные\nпогрешности")
+	fmt.Println()
+
+	countsByWord := make(map[string]int)
+	for _, res := range results.Results {
+		key := res.Word
+		if !results.CaseSensitive {
+			key = strings.ToLower(key)
+		}
+		countsByWord[key]++
+	}
+
+	countsByQuery := make(map[string]int)
+	if !results.WholeWordOnly {
+		for _, res := range results.Results {
+			countsByQuery[res.MatchedWord]++
+		}
+	}
+
+	wordKeys := make([]string, 0, len(countsByWord))
+	for word := range countsByWord {
+		wordKeys = append(wordKeys, word)
+	}
+	slices.SortFunc(wordKeys, func(a, b string) int {
+		return countsByWord[b] - countsByWord[a]
+	})
+
+	queryKeys := make([]string, 0, len(countsByQuery))
+	if !results.WholeWordOnly {
+		for query := range countsByQuery {
+			queryKeys = append(queryKeys, query)
+		}
+		slices.SortFunc(queryKeys, func(a, b string) int {
+			return countsByQuery[b] - countsByQuery[a]
+		})
+	}
+
+	summary := color.New(color.FgHiCyan, color.Bold)
+
+	if !results.WholeWordOnly {
+		summary.Println("По запросам:")
+		for _, query := range queryKeys {
+			fmt.Printf("  %s: %d %s\n",
+				query, countsByQuery[query], utils.DeclinationWord(countsByQuery[query], "раз", "раза", "раз"))
+		}
+		fmt.Println()
+	}
+
+	summary.Println("По словоформам:")
+	for _, word := range wordKeys {
+		fmt.Printf("  %s: %d %s\n",
+			word, countsByWord[word], utils.DeclinationWord(countsByWord[word], "раз", "раза", "раз"))
+	}
 	fmt.Println()
 
 	var buf bytes.Buffer
@@ -318,7 +391,7 @@ func FindInTextFormatting(results []types.FindInTextResults) {
 
 	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", "Строка", "Позиция", "Слово", "Контекст")
 
-	for _, res := range results {
+	for _, res := range results.Results {
 		fmt.Fprintf(w, "%d\t%d\t%s\t%s\n",
 			res.LineIndex,
 			res.CharIndex,
@@ -333,7 +406,7 @@ func FindInTextFormatting(results []types.FindInTextResults) {
 
 	fmt.Println(labelColor.Sprint(lines[0]))
 
-	for i, res := range results {
+	for i, res := range results.Results {
 		line := strings.ReplaceAll(lines[i+1], res.Word, matchColor.Sprint(res.Word))
 		fmt.Println(line)
 	}
