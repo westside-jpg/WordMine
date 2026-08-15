@@ -115,7 +115,7 @@ func ttrLevel(ttr float64) string {
 	}
 }
 
-// GetTopFormatting печатает в стандартный вывод отформатированную таблицу
+// TopFormatting печатает в стандартный вывод отформатированную таблицу
 // топ-слов с порядковыми номерами, количеством вхождений и цветной шкалой
 // относительной частоты в процентах от самого частого слова в списке.
 //
@@ -137,7 +137,7 @@ func ttrLevel(ttr float64) string {
 //
 // Цвет автоматически отключается библиотекой fatih/color, если вывод
 // перенаправлен не в интерактивный терминал (например, в файл).
-func GetTopFormatting(results []types.WordCount) {
+func TopFormatting(results []types.WordCount) {
 	if len(results) == 0 {
 		printError("Нет данных для отображения")
 		return
@@ -198,7 +198,7 @@ func GetTopFormatting(results []types.WordCount) {
 	w.Flush()
 }
 
-// GetStatsFormatting печатает в стандартный вывод отформатированную сводку
+// StatsFormatting печатает в стандартный вывод отформатированную сводку
 // статистики текста, сгруппированную по смысловым разделам: символы и
 // пунктуация, слова, предложения, итоговые метрики. Числовые поля внутри
 // раздела выровнены через text/tabwriter, заголовок раздела выделен цветом.
@@ -213,7 +213,7 @@ func GetTopFormatting(results []types.WordCount) {
 //
 // Если results является нулевым значением types.Stats, выводит сообщение
 // об отсутствии данных и завершает работу без ошибки.
-func GetStatsFormatting(results types.Stats) {
+func StatsFormatting(results types.Stats) {
 	if results == (types.Stats{}) {
 		printError("Нет данных для отображения")
 		return
@@ -410,4 +410,80 @@ func FindInTextFormatting(results types.FindInTextResponse) {
 		line := strings.ReplaceAll(lines[i+1], res.Word, matchColor.Sprint(res.Word))
 		fmt.Println(line)
 	}
+}
+
+// LetterFrequencyFormatting печатает в стандартный вывод отформатированную
+// таблицу частоты букв в тексте, отсортированную по убыванию количества
+// вхождений, с цветной шкалой относительной частоты в процентах от самой
+// частой буквы в списке.
+//
+// Колонки (номер, буква, количество) выравниваются автоматически через
+// text/tabwriter по самому широкому значению в каждой колонке. Шкала
+// красится в зависимости от процента: зелёный выше 80%, жёлтый выше 40%,
+// красный для остального, по той же логике, что и GetTopFormatting.
+//
+// Параметры:
+//   - results: список букв с их частотой, ожидается отсортированный по
+//     убыванию Count результат services.GetLetterFrequency. Первый элемент
+//     используется как эталон 100% для расчёта шкалы остальных строк.
+//
+// Если results пуст, выводит сообщение об отсутствии данных и завершает
+// работу без ошибки.
+func LetterFrequencyFormatting(results []types.LetterCount) {
+	if len(results) == 0 {
+		printError("Нет данных для отображения")
+		return
+	}
+
+	header := color.New(color.FgHiWhite, color.Bold, color.BgBlue)
+	warning := color.New(color.FgHiBlack, color.Italic)
+
+	fmt.Println()
+	header.Printf(" Частота %d %s в тексте ",
+		len(results),
+		utils.DeclinationWord(len(results), "буквы", "букв", "букв"),
+	)
+	fmt.Println()
+	fmt.Println()
+	warning.Println("Возможны\nнезначительные\nпогрешности")
+	fmt.Println()
+
+	maxCount := results[0].Count
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	for n, res := range results {
+		percent := float64(res.Count) * 100 / float64(maxCount)
+
+		bar := ""
+		for i := range 20 {
+			if (i+1)*5 <= int(percent) {
+				bar += "█"
+			} else {
+				bar += "▒"
+			}
+		}
+
+		var barColor *color.Color
+		switch {
+		case percent > 80:
+			barColor = color.New(color.FgGreen)
+		case percent > 40:
+			barColor = color.New(color.FgYellow)
+		default:
+			barColor = color.New(color.FgRed)
+		}
+
+		coloredBar := barColor.Sprintf("%s %7.3f%%", bar, percent)
+
+		fmt.Fprintf(w, "%d.\t%c\t%d %s\t%s\n",
+			n+1,
+			res.Letter,
+			res.Count,
+			utils.DeclinationWord(res.Count, "раз", "раза", "раз"),
+			coloredBar,
+		)
+	}
+
+	w.Flush()
 }

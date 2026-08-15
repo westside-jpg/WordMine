@@ -72,3 +72,8 @@ type WordWithPosition struct {
 	Word      string
 	CharIndex int
 }
+
+type LetterCount struct {
+	Letter rune
+	Count  int
+}

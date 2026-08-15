@@ -18,7 +18,7 @@ import (
 	"github.com/kljensen/snowball"
 )
 
-// GetTop читает текстовый файл по указанному пути и возвращает топ самых
+// Top читает текстовый файл по указанному пути и возвращает топ самых
 // часто встречающихся слов, отсортированных по убыванию частоты. При равной
 // частоте слова упорядочиваются по алфавиту, чтобы результат был одинаковым
 // при каждом вызове.
@@ -46,7 +46,7 @@ import (
 // Возвращает ошибку, если файл не удалось открыть или прочитать.
 // Если найдено меньше слов, чем запрошено в Limit, возвращает столько,
 // сколько нашлось, без ошибки.
-func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
+func Top(name string, options types.TopOptions) ([]types.WordCount, error) {
 	if options.Limit == 0 {
 		options.Limit = 10
 	}
@@ -130,7 +130,7 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 
 }
 
-// GetStats читает текстовый файл целиком и возвращает набор статистических
+// Stats читает текстовый файл целиком и возвращает набор статистических
 // и лингвистических характеристик текста: количество букв, слов,
 // предложений, знаков препинания, цифр и чисел, лексическое разнообразие,
 // долю стоп-слов и приблизительный индекс читаемости.
@@ -154,7 +154,7 @@ func GetTop(name string, options types.TopOptions) ([]types.WordCount, error) {
 // Возвращает ошибку, если файл не удалось открыть или прочитать, если
 // текст не содержит ни одного предложения, или если после очистки в
 // тексте не осталось ни одного слова.
-func GetStats(name string) (types.Stats, error) {
+func Stats(name string) (types.Stats, error) {
 	data, err := os.ReadFile(name)
 	if err != nil {
 		return types.Stats{}, err
@@ -449,4 +449,43 @@ func FindInText(name string, options types.FindInTextOptions) (types.FindInTextR
 	}
 
 	return response, nil
+}
+
+// LetterFrequency читает текстовый файл целиком и возвращает частоту
+// каждой буквы в тексте, без учёта регистра. Небуквенные символы
+// (пунктуация, цифры, пробелы, переносы строк) в подсчёт не входят.
+//
+// Результат отсортирован по убыванию частоты, при равной частоте буквы
+// упорядочиваются по алфавиту, чтобы результат был одинаковым при
+// каждом вызове.
+//
+// Возвращает ошибку, если файл не удалось открыть или прочитать.
+func LetterFrequency(name string) ([]types.LetterCount, error) {
+	data, err := os.ReadFile(name)
+	if err != nil {
+		return nil, err
+	}
+	text := string(data)
+
+	letters := make(map[rune]int)
+	for _, r := range text {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		letters[unicode.ToLower(r)]++
+	}
+
+	results := make([]types.LetterCount, 0, len(letters))
+	for letter, count := range letters {
+		results = append(results, types.LetterCount{Letter: letter, Count: count})
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].Count != results[j].Count {
+			return results[i].Count > results[j].Count
+		}
+		return results[i].Letter < results[j].Letter
+	})
+
+	return results, nil
 }

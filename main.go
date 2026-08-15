@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	list, err := services.GetTop("warandpeace.txt", 
+	list, err := services.Top("warandpeace.txt", 
 	types.TopOptions{
 		Limit: 10,
 		ExcludeStopWords: true,
@@ -19,10 +19,10 @@ func main() {
 		log.Fatalf("Ошибка анализа слов по длине: %v", err)
 	}
 
-	formatting.GetTopFormatting(list)
+	formatting.TopFormatting(list)
 
-	list2, err := services.GetStats("warandpeace.txt")
-	formatting.GetStatsFormatting(list2)
+	list2, err := services.Stats("warandpeace.txt")
+	formatting.StatsFormatting(list2)
 
 	list3, err := services.FindInText("warandpeace.txt", types.FindInTextOptions{
 		Words: []string{"король", "князь"},
@@ -30,5 +30,8 @@ func main() {
 		CaseSensitive: true,
 	})
 	formatting.FindInTextFormatting(list3)
+
+	list4, err := services.LetterFrequency("warandpeace.txt")
+	formatting.LetterFrequencyFormatting(list4)
 
 }
