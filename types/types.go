@@ -1,6 +1,6 @@
 package types
 
-type TopOptions struct {
+type TopWordsOptions struct {
 	Length           int      // 0 - любая длина
 	Limit            int      // сколько слов вернуть
 	CaseSensitive    bool     // чувствительность к регистру
@@ -76,4 +76,20 @@ type WordWithPosition struct {
 type LetterCount struct {
 	Letter rune
 	Count  int
+}
+
+type TopNGramOptions struct {
+	N             int
+	Limit         int
+	CaseSensitive bool
+}
+
+type NGramCount struct {
+	NGram string
+	Count  int
+}
+
+type NGramResponse struct {
+	NGrams []NGramCount
+	N      int
 }

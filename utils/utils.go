@@ -65,7 +65,7 @@ var sentencePattern = regexp.MustCompile(`[^.!?]+[.!?]+`)
 // предложения. Для более точной сегментации потребуется список исключений
 // или полноценная NLP-библиотека.
 func SplitIntoSentences(text string) []string {
-    	matches := sentencePattern.FindAllString(text, -1)
+    matches := sentencePattern.FindAllString(text, -1)
 
 	sentences := make([]string, 0, len(matches))
 	for _, s := range matches {

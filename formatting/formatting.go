@@ -18,7 +18,7 @@ import (
 // белым текстом на красном фоне, используется единообразно во всех
 // функциях formatting при отсутствии данных для отображения.
 func printError(msg string) {
-	color.New(color.FgHiWhite, color.BgRed, color.Bold).Printf(" %s \n", msg)
+	color.New(color.FgHiWhite, color.BgRed, color.Bold).Printf(" %s ", msg)
 }
 
 // wrapWidth — ширина переноса строки для длинных предложений в символах.
@@ -115,7 +115,7 @@ func ttrLevel(ttr float64) string {
 	}
 }
 
-// TopFormatting печатает в стандартный вывод отформатированную таблицу
+// TopWordsFormatting печатает в стандартный вывод отформатированную таблицу
 // топ-слов с порядковыми номерами, количеством вхождений и цветной шкалой
 // относительной частоты в процентах от самого частого слова в списке.
 //
@@ -137,7 +137,7 @@ func ttrLevel(ttr float64) string {
 //
 // Цвет автоматически отключается библиотекой fatih/color, если вывод
 // перенаправлен не в интерактивный терминал (например, в файл).
-func TopFormatting(results []types.WordCount) {
+func TopWordsFormatting(results []types.WordCount) {
 	if len(results) == 0 {
 		printError("Нет данных для отображения")
 		return
@@ -479,6 +479,86 @@ func LetterFrequencyFormatting(results []types.LetterCount) {
 		fmt.Fprintf(w, "%d.\t%c\t%d %s\t%s\n",
 			n+1,
 			res.Letter,
+			res.Count,
+			utils.DeclinationWord(res.Count, "раз", "раза", "раз"),
+			coloredBar,
+		)
+	}
+
+	w.Flush()
+}
+
+// NGramsFormatting печатает в стандартный вывод отформатированную таблицу
+// топ-N-грамм с порядковыми номерами, количеством вхождений и цветной
+// шкалой относительной частоты в процентах от самой частой n-граммы в
+// списке.
+//
+// Колонки (номер, n-грамма, количество) выравниваются автоматически через
+// text/tabwriter по самому широкому значению в каждой колонке. Шкала
+// красится в зависимости от процента: зелёный выше 80%, жёлтый выше 40%,
+// красный для остального. Процент считается относительно самой частой
+// n-граммы в этом же топе, а не относительно общего количества слов в
+// тексте, это даёт максимальную визуальную дифференциацию внутри самого
+// списка, тогда как доля от всего текста была бы у всех строк близка
+// к нулю и сделала бы цветовую шкалу бессмысленной.
+//
+// Параметры:
+//   - response: результат services.TopNGrams. response.NGrams ожидается
+//     отсортированным по убыванию Count, первый элемент используется
+//     как эталон 100% для расчёта шкалы остальных строк.
+//
+// Если response.NGrams пуст, выводит сообщение об отсутствии данных и
+// завершает работу без ошибки.
+func NGramsFormatting(response types.NGramResponse) {
+	if len(response.NGrams) == 0 {
+		printError("Нет данных для отображения")
+		return
+	}
+
+	header := color.New(color.FgHiWhite, color.Bold, color.BgBlue)
+	warning := color.New(color.FgHiBlack, color.Italic)
+
+	fmt.Println()
+	header.Printf(" Топ-%d N-грамм (N = %d) ",
+		len(response.NGrams),
+		response.N,
+	)
+	fmt.Println()
+	fmt.Println()
+	warning.Println("Данные приблизительны,\nвозможны незначительные\nпогрешности")
+	fmt.Println()
+
+	maxCount := response.NGrams[0].Count
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+
+	for i, res := range response.NGrams {
+		percent := res.Count * 100 / maxCount
+
+		bar := ""
+		for j := range 10 {
+			if (j+1)*10 <= percent {
+				bar += "█"
+			} else {
+				bar += "▒"
+			}
+		}
+
+		var barColor *color.Color
+		switch {
+		case percent > 80:
+			barColor = color.New(color.FgGreen)
+		case percent > 40:
+			barColor = color.New(color.FgYellow)
+		default:
+			barColor = color.New(color.FgRed)
+		}
+
+		coloredBar := barColor.Sprintf("%s %3d%%", bar, percent)
+
+		fmt.Fprintf(w, "%d.\t%s\t%d %s\t%s\n",
+			i+1,
+			res.NGram,
 			res.Count,
 			utils.DeclinationWord(res.Count, "раз", "раза", "раз"),
 			coloredBar,

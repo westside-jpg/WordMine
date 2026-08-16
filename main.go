@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	list, err := services.Top("warandpeace.txt", 
-	types.TopOptions{
+	list, err := services.TopWords("warandpeace.txt", 
+	types.TopWordsOptions{
 		Limit: 10,
 		ExcludeStopWords: true,
 	})
@@ -19,19 +19,23 @@ func main() {
 		log.Fatalf("Ошибка анализа слов по длине: %v", err)
 	}
 
-	formatting.TopFormatting(list)
+	formatting.TopWordsFormatting(list)
 
 	list2, err := services.Stats("warandpeace.txt")
 	formatting.StatsFormatting(list2)
 
 	list3, err := services.FindInText("warandpeace.txt", types.FindInTextOptions{
-		Words: []string{"король", "князь"},
+		Words: []string{"мир"},
 		WholeWordOnly: false,
-		CaseSensitive: true,
+		CaseSensitive: false,
 	})
 	formatting.FindInTextFormatting(list3)
 
 	list4, err := services.LetterFrequency("warandpeace.txt")
 	formatting.LetterFrequencyFormatting(list4)
 
+	list5, err := services.TopNGrams("warandpeace.txt", types.TopNGramOptions{
+		N: 2,
+	})
+	formatting.NGramsFormatting(list5)
 }

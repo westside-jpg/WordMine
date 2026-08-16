@@ -18,7 +18,7 @@ import (
 	"github.com/kljensen/snowball"
 )
 
-// Top читает текстовый файл по указанному пути и возвращает топ самых
+// TopWords читает текстовый файл по указанному пути и возвращает топ самых
 // часто встречающихся слов, отсортированных по убыванию частоты. При равной
 // частоте слова упорядочиваются по алфавиту, чтобы результат был одинаковым
 // при каждом вызове.
@@ -46,7 +46,7 @@ import (
 // Возвращает ошибку, если файл не удалось открыть или прочитать.
 // Если найдено меньше слов, чем запрошено в Limit, возвращает столько,
 // сколько нашлось, без ошибки.
-func Top(name string, options types.TopOptions) ([]types.WordCount, error) {
+func TopWords(name string, options types.TopWordsOptions) ([]types.WordCount, error) {
 	if options.Limit == 0 {
 		options.Limit = 10
 	}
@@ -488,4 +488,103 @@ func LetterFrequency(name string) ([]types.LetterCount, error) {
 	})
 
 	return results, nil
+}
+
+// TopNGrams читает текстовый файл по указанному пути и возвращает топ
+// самых часто встречающихся n-грамм (последовательностей из N слов
+// подряд), отсортированных по убыванию частоты. При равной частоте
+// n-граммы упорядочиваются по алфавиту, чтобы результат был одинаковым
+// при каждом вызове.
+//
+// N-граммы строятся отдельно внутри каждого предложения (через
+// utils.SplitIntoSentences), а не по всему тексту сплошным потоком слов,
+// чтобы окно не захватывало последнее слово одного предложения вместе
+// с первым словом следующего, такие сочетания не несут смысловой связи
+// и были бы шумом в результате.
+//
+// Слова очищаются от пунктуации по краям через utils.CleanWord перед
+// сборкой n-грамм (например, "кто-то," и "кто-то" считаются одним
+// словом). Если после очистки слово превращается в пустую строку, оно
+// выбрасывается из последовательности, а соседние слова "смыкаются"
+// через выброшенное место, как если бы между ними изначально не было
+// разделявшего их знака препинания.
+//
+// Параметры:
+//   - name: путь к текстовому файлу для анализа.
+//   - options: настройки построения n-грамм, см. types.TopNGramOptions.
+//     N: размер n-граммы, сколько слов подряд считается одной единицей;
+//     если 0, используется значение по умолчанию 2 (биграммы)
+//     Limit: сколько n-грамм вернуть в топе; если 0, используется
+//     значение по умолчанию 10
+//     CaseSensitive: если false, регистр букв игнорируется при подсчёте
+//
+// Возвращает ошибку, если файл не удалось открыть или прочитать.
+// Предложения короче N слов пропускаются без ошибки. Если найдено
+// меньше n-грамм, чем запрошено в Limit, возвращает столько, сколько
+// нашлось, без ошибки.
+func TopNGrams(name string, options types.TopNGramOptions) (types.NGramResponse, error) {
+	n := options.N
+	if n == 0 {
+		n = 2
+	}
+	limit := options.Limit
+	if limit == 0 {
+		limit = 10
+	}
+
+	data, err := os.ReadFile(name)
+	if err != nil {
+		return types.NGramResponse{}, err
+	}
+
+	sentences := utils.SplitIntoSentences(string(data))
+
+	counts := make(map[string]int)
+
+	for _, sentence := range sentences {
+		words := strings.Fields(sentence)
+
+		cleaned := make([]string, 0, len(words))
+		for _, w := range words {
+			cw := utils.CleanWord(w)
+			if cw == "" {
+				continue
+			}
+			if !options.CaseSensitive {
+				cw = strings.ToLower(cw)
+			}
+			cleaned = append(cleaned, cw)
+		}
+
+		if len(cleaned) < n {
+			continue
+		}
+
+		for i := 0; i+n <= len(cleaned); i++ {
+			gram := strings.Join(cleaned[i:i+n], " ")
+			counts[gram]++
+		}
+	}
+
+	results := make([]types.NGramCount, 0, len(counts))
+	for gram, count := range counts {
+		results = append(results, types.NGramCount{NGram: gram, Count: count})
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].Count != results[j].Count {
+			return results[i].Count > results[j].Count
+		}
+		return results[i].NGram < results[j].NGram
+	})
+
+	if limit > len(results) {
+		limit = len(results)
+	}
+	
+
+	return types.NGramResponse{
+		NGrams: results[:limit],
+		N: n,
+	}, nil
 }
