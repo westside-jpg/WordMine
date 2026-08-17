@@ -34,35 +34,35 @@ CLI-инструмент и библиотека для частотного и 
 ### Топ слов
 <div align="center">
 
-  <img src="docs/top.png" width="100%">
+  <img src="docs/top.png" width="80%">
 
 </div>
 
 ### Статистика текста
 <div align="center">
 
-  <img src="docs/stats.png" width="100%">
+  <img src="docs/stats.png" width="80%">
 
 </div>
 
 ### Поиск в тексте
 <div align="center">
 
-  <img src="docs/find.png" width="100%">
+  <img src="docs/find.png" width="80%">
 
 </div>
 
 ### Частотность букв
 <div align="center">
 
-  <img src="docs/letters.png" width="100%">
+  <img src="docs/letters.png" width="80%">
 
 </div>
 
 ### N-граммы
 <div align="center">
 
-  <img src="docs/ngrams.png" width="100%">
+  <img src="docs/ngrams.png" width="80%">
 
 </div>
 
@@ -210,13 +210,18 @@ wordmine ngrams -file book.txt -n 3 -limit 15
 ```
 .
 ├── cmd/wordmine/    - точка входа CLI-программы
-├── services/        - основная логика анализа текста
-├── types/           - структуры опций и результатов
-├── formatting/      - форматированный вывод результатов в терминал
+├── docs/            - скриншоты и лого для README
 ├── export/          - экспорт результатов в JSON/TXT
+├── formatting/      - форматированный вывод результатов в терминал
+├── services/        - основная логика анализа текста
 ├── stopwords/       - список стоп-слов по умолчанию
-└── utils/           - вспомогательные функции (очистка слов, разбиение
-                        на предложения и так далее)
+├── types/           - структуры опций и результатов
+├── utils/           - вспомогательные функции (очистка слов, разбиение
+│                       на предложения и так далее)
+├── go.mod
+├── go.sum
+├── LICENSE
+└── README.md
 ```
 
 ## Лицензия и атрибуция
