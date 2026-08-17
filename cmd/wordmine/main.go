@@ -48,14 +48,83 @@ func handleExport(path string, data any, print func()) {
 	}
 }
 
+func printHelp() {
+	header := color.New(color.FgWhite, color.Bold, color.BgBlue)
+	section := color.New(color.FgHiCyan, color.Bold)
+	command := color.New(color.FgHiWhite, color.Bold)
+
+	fmt.Println()
+	header.Print(" WordMine. CLI-инструмент для анализа текста ")
+	fmt.Println()
+	fmt.Println()
+
+	section.Println("Использование:")
+	fmt.Println("  wordmine <команда> [флаги]")
+	fmt.Println()
+
+	section.Println("Команды:")
+
+	fmt.Printf("  %s      Найти самые частотные слова\n",
+		command.Sprint("top"))
+	fmt.Printf("  %s    Получить статистику текста\n",
+		command.Sprint("stats"))
+	fmt.Printf("  %s     Найти слова в тексте\n",
+		command.Sprint("find"))
+	fmt.Printf("  %s  Частотность букв\n",
+		command.Sprint("letters"))
+	fmt.Printf("  %s   Найти наиболее частые n-граммы\n",
+		command.Sprint("ngrams"))
+
+	fmt.Println()
+	section.Println("Для подробной информации о команде:")
+	fmt.Println("  wordmine <команда> -h")
+	fmt.Println()
+
+}
+
+func setCommandHelp(fs *flag.FlagSet, commandName string, description string) {
+	header := color.New(color.FgHiWhite, color.Bold, color.BgBlue)
+	section := color.New(color.FgHiCyan, color.Bold)
+
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output())
+
+		header.Fprintf(
+			fs.Output(),
+			" WordMine / %s ",
+			commandName,
+		)
+
+		fmt.Fprintln(fs.Output())
+		fmt.Fprintln(fs.Output())
+
+		fmt.Fprintln(fs.Output(), description)
+		fmt.Fprintln(fs.Output())
+
+		section.Fprintln(fs.Output(), "Использование:")
+		fmt.Fprintf(fs.Output(), "  wordmine %s [флаги]\n", commandName)
+		fmt.Fprintln(fs.Output())
+
+		section.Fprintln(fs.Output(), "Флаги:")
+		fs.PrintDefaults()
+
+		fmt.Fprintln(fs.Output())
+	}
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		printErr("Не указана команда для анализа текста (top, stats, find, letters, ngrams)")
-		os.Exit(1)
+		printHelp()
+		return
 	}
 
 	command := os.Args[1]
 	args := os.Args[2:]
+
+	if command == "-h" || command == "-help" {
+		printHelp()
+		return
+	}
 
 	switch command {
 	case "top":
@@ -84,10 +153,16 @@ func runTop(args []string) {
 	excludeStop := fs.Bool("exclude-stopwords", false, "Исключить стоп-слова")
 	exportPath := fs.String("export", "", "Путь для сохранения в TXT или JSON вместо вывода в терминал")
 
+	setCommandHelp(
+		fs,
+		"top",
+		"Показывает наиболее часто встречающиеся слова в тексте",
+	)
+
 	fs.Parse(args)
 
 	if *file == "" {
-		printErr("Нужно указать название файла (-file)")
+		printErr("Нужно указать файл (-file)")
 		os.Exit(1)
 	}
 
@@ -111,10 +186,16 @@ func runStats(args []string) {
 	file := fs.String("file", "", "Путь к текстовому файлу")
 	exportPath := fs.String("export", "", "Путь для сохранения в TXT или JSON вместо вывода в терминал")
 
+	setCommandHelp(
+		fs,
+		"stats",
+		"Показывает подробную статистику анализируемого текста",
+	)
+
 	fs.Parse(args)
 
 	if *file == "" {
-		printErr("Нужно указать название файла (-file)")
+		printErr("Нужно указать файл (-file)")
 		os.Exit(1)
 	}
 
@@ -136,10 +217,16 @@ func runFind(args []string) {
 	wholeWordOnly := fs.Bool("whole-word", false, "Целое слово или подстрока")
 	exportPath := fs.String("export", "", "Путь для сохранения в TXT или JSON вместо вывода в терминал")
 
+	setCommandHelp(
+		fs,
+		"find",
+		"Ищет указанные слова или подстроки в тексте",
+	)
+
 	fs.Parse(args)
 
 	if *file == "" {
-		printErr("Нужно указать название файла (-file)")
+		printErr("Нужно указать файл (-file)")
 		os.Exit(1)
 	}
 
@@ -169,10 +256,16 @@ func runLetters(args []string) {
 	file := fs.String("file", "", "Путь к текстовому файлу")
 	exportPath := fs.String("export", "", "Путь для сохранения в TXT или JSON вместо вывода в терминал")
 
+	setCommandHelp(
+		fs,
+		"letters",
+		"Показывает частотность букв в тексте",
+	)
+
 	fs.Parse(args)
 
 	if *file == "" {
-		printErr("Нужно указать название файла (-file)")
+		printErr("Нужно указать файл (-file)")
 		os.Exit(1)
 	}
 
@@ -194,10 +287,16 @@ func runNGrams(args []string) {
 	file := fs.String("file", "", "Путь к текстовому файлу")
 	exportPath := fs.String("export", "", "Путь для сохранения в TXT или JSON вместо вывода в терминал")
 
+	setCommandHelp(
+		fs,
+		"ngrams",
+		"Показывает наиболее часто встречающиеся последовательности слов",
+	)
+
 	fs.Parse(args)
 
 	if *file == "" {
-		printErr("Нужно указать название файла (-file)")
+		printErr("Нужно указать файл (-file)")
 		os.Exit(1)
 	}
 
