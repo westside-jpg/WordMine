@@ -36,11 +36,16 @@ func ExportJSON(data any, path string) error {
 		return err
 	}
 
+	if err := os.WriteFile(path, bytes, 0644); err != nil {
+		return err
+	}
+
 	fmt.Println()
 	msg := fmt.Sprintf("Данные успешно записаны по пути \"%s\"", path)
 	success.Print(msg)
 	fmt.Println()
-	return os.WriteFile(path, bytes, 0644)
+
+	return nil
 }
 
 // ExportTXT сохраняет результат работы Formatting-функции (GetTopFormatting,
