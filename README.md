@@ -68,17 +68,17 @@ CLI-инструмент и библиотека для частотного и 
 
 ## Возможности
 
-**Топ слов** - самые частые слова текста, с фильтрацией стоп-слов и по длине слова
+- **Топ слов** - самые частые слова текста, с фильтрацией стоп-слов и по длине слова
 
-**Статистика текста** - длина слов и предложений, лексическое разнообразие, индекс читаемости, слоги и так далее
+- **Статистика текста** - длина слов и предложений, лексическое разнообразие, индекс читаемости, слоги и так далее
 
-**Поиск по тексту** - слова и подстроки с контекстом вхождения
+- **Поиск по тексту** - слова и подстроки с контекстом вхождения
 
-**Частота букв** - распределение букв по всему тексту
+- **Частота букв** - распределение букв по всему тексту
 
-**N-граммы** - самые частые устойчивые последовательности слов
+- **N-граммы** - самые частые устойчивые последовательности слов
 
-**Экспорт** - любой результат можно сохранить в JSON или TXT
+- **Экспорт** - любой результат можно сохранить в JSON или TXT
 
 ## Установка
 
@@ -231,32 +231,32 @@ wordmine ngrams -file book.txt -n 3 -limit 15
 
 ### Сторонние зависимости
 
-**fatih/color**
+**Go**  
+Лицензия BSD-3-Clause с патентной оговоркой
+Разработчик The Go Authors
+Текст лицензии [https://github.com/golang/go/blob/master/LICENSE](https://github.com/golang/go/blob/master/LICENSE)
+
+**fatih/color**  
 Лицензия MIT
 Репозиторий [https://github.com/fatih/color](https://github.com/fatih/color)
 Текст лицензии [https://github.com/fatih/color/blob/main/LICENSE.md](https://github.com/fatih/color/blob/main/LICENSE.md)
 
-**kljensen/snowball**
+**kljensen/snowball**  
 Лицензия MIT
 Репозиторий [https://github.com/kljensen/snowball](https://github.com/kljensen/snowball)
 Текст лицензии [https://github.com/kljensen/snowball/blob/master/LICENSE](https://github.com/kljensen/snowball/blob/master/LICENSE)
 
-**mattn/go-colorable**
+**mattn/go-colorable**  
 Лицензия MIT
 Репозиторий [https://github.com/mattn/go-colorable](https://github.com/mattn/go-colorable)
 Текст лицензии [https://github.com/mattn/go-colorable/blob/master/LICENSE](https://github.com/mattn/go-colorable/blob/master/LICENSE)
 
-**mattn/go-isatty**
+**mattn/go-isatty**  
 Лицензия MIT
 Репозиторий [https://github.com/mattn/go-isatty](https://github.com/mattn/go-isatty)
 Текст лицензии [https://github.com/mattn/go-isatty/blob/master/LICENSE](https://github.com/mattn/go-isatty/blob/master/LICENSE)
 
-**golang.org/x/sys**
+**golang.org/x/sys**  
 Лицензия BSD-3-Clause
 Репозиторий [https://cs.opensource.google/go/x/sys](https://cs.opensource.google/go/x/sys)
 Текст лицензии [https://cs.opensource.google/go/x/sys/+/master:LICENSE](https://cs.opensource.google/go/x/sys/+/master:LICENSE)
-
-**Go**
-Лицензия BSD-3-Clause с патентной оговоркой
-Разработчик The Go Authors
-Текст лицензии [https://github.com/golang/go/blob/master/LICENSE](https://github.com/golang/go/blob/master/LICENSE)
