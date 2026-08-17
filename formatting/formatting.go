@@ -18,7 +18,9 @@ import (
 // белым текстом на красном фоне, используется единообразно во всех
 // функциях formatting при отсутствии данных для отображения.
 func printError(msg string) {
+	fmt.Println()
 	color.New(color.FgHiWhite, color.BgRed, color.Bold).Printf(" %s ", msg)
+	fmt.Println()
 }
 
 // wrapWidth — ширина переноса строки для длинных предложений в символах.
