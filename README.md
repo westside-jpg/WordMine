@@ -27,7 +27,7 @@ CLI-инструмент и библиотека для частотного и 
 ### Интерфейс
 <div align="center">
 
-  <img src="docs/preview.png" width="100%">
+  <img src="docs/preview.png" width="80%">
 
 </div>
 
